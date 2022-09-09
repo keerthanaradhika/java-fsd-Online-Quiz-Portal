@@ -1,0 +1,436 @@
+Online Quiz Portal Using REST API
+
+MainController.java:
+
+import java.util.List;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+import com.devrezaur.main.model.QuestionForm;
+import com.devrezaur.main.model.Result;
+import com.devrezaur.main.service.QuizService;
+
+@Controller
+public class MainController {
+	
+	@Autowired
+	Result result;
+	@Autowired
+	QuizService qService;
+	
+	Boolean submitted = false;
+	
+	@ModelAttribute("result")
+	public Result getResult() {
+		return result;
+	}
+	
+	@GetMapping("/")
+	public String home() {
+		return "index.html";
+	}
+	
+	@PostMapping("/quiz")
+	public String quiz(@RequestParam String username, Model m, RedirectAttributes ra) {
+		if(username.equals("")) {
+			ra.addFlashAttribute("warning", "You must enter your name");
+			return "redirect:/";
+		}
+		
+		submitted = false;
+		result.setUsername(username);
+		
+		QuestionForm qForm = qService.getQuestions();
+		m.addAttribute("qForm", qForm);
+		
+		return "quiz.html";
+	}
+	
+	@PostMapping("/submit")
+	public String submit(@ModelAttribute QuestionForm qForm, Model m) {
+		if(!submitted) {
+			result.setTotalCorrect(qService.getResult(qForm));
+			qService.saveScore(result);
+			submitted = true;
+		}
+		
+		return "result.html";
+	}
+	
+	@GetMapping("/score")
+	public String score(Model m) {
+		List<Result> sList = qService.getTopScore();
+		m.addAttribute("sList", sList);
+		
+		return "scoreboard.html";
+	}
+
+}
+
+Question.java:
+
+import javax.persistence.Entity;
+import javax.persistence.GeneratedValue;
+import javax.persistence.GenerationType;
+import javax.persistence.Id;
+import javax.persistence.Table;
+import org.springframework.stereotype.Component;
+
+@Component
+@Entity
+@Table(name = "questions")
+public class Question {
+
+	@Id
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	private int quesId;
+	private String title;
+	private String optionA;
+	private String optionB;
+	private String optionC;
+	private int ans;
+	private int chose;
+
+	public Question() {
+		super();
+	}
+
+	public Question(int quesId, String title, String optionA, String optionB, String optionC, int ans, int chose) {
+		super();
+		this.quesId = quesId;
+		this.title = title;
+		this.optionA = optionA;
+		this.optionB = optionB;
+		this.optionC = optionC;
+		this.ans = ans;
+		this.chose = chose;
+	}
+
+	public int getQuesId() {
+		return quesId;
+	}
+
+	public void setQuesId(int quesId) {
+		this.quesId = quesId;
+	}
+
+	public String getTitle() {
+		return title;
+	}
+
+	public void setTitle(String title) {
+		this.title = title;
+	}
+
+	public String getOptionA() {
+		return optionA;
+	}
+
+	public void setOptionA(String optionA) {
+		this.optionA = optionA;
+	}
+
+	public String getOptionB() {
+		return optionB;
+	}
+
+	public void setOptionB(String optionB) {
+		this.optionB = optionB;
+	}
+
+	public String getOptionC() {
+		return optionC;
+	}
+
+	public void setOptionC(String optionC) {
+		this.optionC = optionC;
+	}
+
+	public int getAns() {
+		return ans;
+	}
+
+	public void setAns(int ans) {
+		this.ans = ans;
+	}
+
+	public int getChose() {
+		return chose;
+	}
+
+	public void setChose(int choosed) {
+		this.chose = choosed;
+	}
+
+	@Override
+	public String toString() {
+		return "Question [quesId=" + quesId + ", title=" + title + ", optionA=" + optionA + ", optionB=" + optionB + ", optionC=" + optionC + ", ans=" + ans + ", chose=" + chose + "]";
+	}
+
+}
+
+QuestionForm.java:
+
+import java.util.List;
+import org.springframework.stereotype.Component;
+
+@Component
+public class QuestionForm {
+
+	private List<Question> questions;
+	
+	public List<Question> getQuestions() {
+		return questions;
+	}
+	
+	public void setQuestions(List<Question> questions) {
+		this.questions = questions;
+	}
+}
+
+Result.java:
+
+import javax.persistence.Entity;
+import javax.persistence.GeneratedValue;
+import javax.persistence.GenerationType;
+import javax.persistence.Id;
+import javax.persistence.Table;
+import org.springframework.stereotype.Component;
+
+@Component
+@Entity
+@Table(name = "results")
+public class Result {
+
+	@Id
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	private int id;
+	private String username;
+	private int totalCorrect = 0;
+
+	public Result() {
+		super();
+	}
+
+	public Result(int id, String username, int totalCorrect) {
+		super();
+		this.id = id;
+		this.username = username;
+		this.totalCorrect = totalCorrect;
+	}
+
+	public int getId() {
+		return id;
+	}
+
+	public void setId(int id) {
+		this.id = id;
+	}
+
+	public String getUsername() {
+		return username;
+	}
+
+	public void setUsername(String username) {
+		this.username = username;
+	}
+
+	public int getTotalCorrect() {
+		return totalCorrect;
+	}
+
+	public void setTotalCorrect(int totalCorrect) {
+		this.totalCorrect = totalCorrect;
+	}
+
+}
+
+QuestionRepository.java:
+ 
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+import com.devrezaur.main.model.Question;
+
+@Repository
+public interface QuestionRepo extends JpaRepository<Question, Integer> {
+
+}
+
+ResultRepository.java:
+
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+import com.devrezaur.main.model.Result;
+
+@Repository
+public interface ResultRepo extends JpaRepository<Result, Integer> {
+	
+}
+
+QuizService.java:
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Random;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Sort;
+import org.springframework.stereotype.Service;
+import com.devrezaur.main.model.Question;
+import com.devrezaur.main.model.QuestionForm;
+import com.devrezaur.main.model.Result;
+import com.devrezaur.main.repository.QuestionRepo;
+import com.devrezaur.main.repository.ResultRepo;
+
+@Service
+public class QuizService {
+	
+	@Autowired
+	Question question;
+	@Autowired
+	QuestionForm qForm;
+	@Autowired
+	QuestionRepo qRepo;
+	@Autowired
+	Result result;
+	@Autowired
+	ResultRepo rRepo;
+	
+	public QuestionForm getQuestions() {
+		List<Question> allQues = qRepo.findAll();
+		List<Question> qList = new ArrayList<Question>();
+		
+		Random random = new Random();
+		
+		for(int i=0; i<5; i++) {
+			int rand = random.nextInt(allQues.size());
+			qList.add(allQues.get(rand));
+			allQues.remove(rand);
+		}
+
+		qForm.setQuestions(qList);
+		
+		return qForm;
+	}
+	
+	public int getResult(QuestionForm qForm) {
+		int correct = 0;
+		
+		for(Question q: qForm.getQuestions())
+			if(q.getAns() == q.getChose())
+				correct++;
+		
+		return correct;
+	}
+	
+	public void saveScore(Result result) {
+		Result saveResult = new Result();
+		saveResult.setUsername(result.getUsername());
+		saveResult.setTotalCorrect(result.getTotalCorrect();
+		rRepo.save(saveResult);
+	}
+	
+	public List<Result> getTopScore() {
+		List<Result> sList = rRepo.findAll(Sort.by(Sort.Direction.DESC, "totalCorrect"));
+		
+		return sList;
+	}
+}
+
+SpringBootQuizAppApplication.java:
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
+public class SpringBootQuizAppApplication {
+
+	public static void main(String[] args) {
+		SpringApplication.run(SpringBootQuizAppApplication.class, args);
+	}
+
+}
+
+SpringBootQuizAppApplicationTest.java:
+
+import org.junit.jupiter.api.Test;
+import org.springframework.boot.test.context.SpringBootTest;
+
+@SpringBootTest
+class SpringBootQuizAppApplicationTests {
+
+	@Test
+	void contextLoads() {
+	}
+
+}
+
+pom.xml:
+
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<parent>
+		<groupId>org.springframework.boot</groupId>
+		<artifactId>spring-boot-starter-parent</artifactId>
+		<version>2.4.3</version>
+		<relativePath/> <!-- lookup parent from repository -->
+	</parent>
+	<groupId>com.devrezaur</groupId>
+	<artifactId>SpringBootQuizApp</artifactId>
+	<version>0.0.1-SNAPSHOT</version>
+	<name>SpringBootQuizApp</name>
+	<description>Simple quiz application using Spring Boot &amp; MySQL</description>
+	<properties>
+		<java.version>15</java.version>
+	</properties>
+	<dependencies>
+		<dependency>
+			<groupId>mysql</groupId>
+			<artifactId>mysql-connector-java</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-data-jpa</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-thymeleaf</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-web</artifactId>
+		</dependency>
+
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-devtools</artifactId>
+			<scope>runtime</scope>
+			<optional>true</optional>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+	</dependencies>
+
+	<build>
+		<plugins>
+			<plugin>
+				<groupId>org.springframework.boot</groupId>
+				<artifactId>spring-boot-maven-plugin</artifactId>
+			</plugin>
+		</plugins>
+	</build>
+
+</project>
+
+
+
+
